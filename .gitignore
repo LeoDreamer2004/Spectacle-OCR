@@ -1,0 +1,31 @@
+# Build products and downloaded models/runtime (see docs/downloads.md).
+/target/
+/build/
+/cmake-build-*/
+/assets/
+
+# Python tooling and caches.
+__pycache__/
+*.py[cod]
+/.venv/
+/.pytest_cache/
+
+# Local runtime data and diagnostics.
+*.core
+/core
+*.log
+*.sock
+*.part
+/:memory:.ses
+/spectacle-ocrrc
+
+# Local credentials, editor and assistant state.
+.env
+.env.*
+!.env.example
+/.idea/
+/.vscode/
+/.agents/
+/.codex/
+.DS_Store
+*~

@@ -1,0 +1,19 @@
+[package]
+name = "spectacle-ocr-service"
+version = "0.1.0"
+edition = "2024"
+description = "Local PP-OCR integration for KDE Spectacle through a preload adapter"
+license = "MIT"
+readme = "README.md"
+publish = false
+
+[dependencies]
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "pnm"] }
+ort = { version = "=2.0.0-rc.13", default-features = false, features = ["std", "load-dynamic", "api-22"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+sha2 = "0.10"
+
+[profile.release]
+lto = "thin"
