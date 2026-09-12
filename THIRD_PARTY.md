@@ -11,7 +11,8 @@
 | PP-OCRv6 small 识别模型及字典 | [PaddlePaddle](https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx) | Apache-2.0 |
 | ONNX Runtime 1.30.0 CPU | [Microsoft](https://github.com/microsoft/onnxruntime/tree/v1.30.0) | MIT |
 
-固定版本、校验值与下载方式见 [下载文档](docs/downloads.md)。
+固定版本、下载地址与校验值见 [models.lock.json](models.lock.json)，运行
+`python3 scripts/setup_assets.py` 自动下载、校验并解压。
 ONNX Runtime 压缩包中的 LICENSE 与第三方 notices 会保留在解压目录中。
 
 ## 直接 Rust 依赖
