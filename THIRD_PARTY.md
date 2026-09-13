@@ -10,10 +10,13 @@
 | PP-OCRv6 small 检测模型及规格 | [PaddlePaddle](https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det_onnx) | Apache-2.0 |
 | PP-OCRv6 small 识别模型及字典 | [PaddlePaddle](https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx) | Apache-2.0 |
 | ONNX Runtime 1.30.0 CPU | [Microsoft](https://github.com/microsoft/onnxruntime/tree/v1.30.0) | MIT |
+| Pix2Text MFR 1.5 公式模型与 tokenizer | [breezedeus](https://huggingface.co/breezedeus/pix2text-mfr-1.5) | MIT（模型卡声明） |
 
 固定版本、下载地址与校验值见 [models.lock.json](models.lock.json)，运行
 `python3 scripts/setup_assets.py` 自动下载、校验并解压。
 ONNX Runtime 压缩包中的 LICENSE 与第三方 notices 会保留在解压目录中。
+
+可选公式资源固定在 [formula.lock.json](formula.lock.json)，下载时添加 `--formula`。
 
 ## 直接 Rust 依赖
 

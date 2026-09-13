@@ -1,4 +1,5 @@
 #include "settings.h"
+#include "formula_ui.h"
 #include <tesseract/baseapi.h>
 #include <tesseract/resultiterator.h>
 
@@ -117,7 +118,8 @@ public:
   }
 };
 
-int timeout_ms() {
+int timeout_ms(bool formula) {
+  if (formula) return 25000;
   const char *value = std::getenv("SPECTACLE_OCR_TIMEOUT_MS");
   if (!value || !*value)
     return socr::timeout();
@@ -131,9 +133,7 @@ int timeout_ms() {
 
 class Connection {
   int fd_ = -1;
-  std::chrono::steady_clock::time_point deadline_ =
-      std::chrono::steady_clock::now() +
-      std::chrono::milliseconds(timeout_ms());
+  std::chrono::steady_clock::time_point deadline_;
 
 public:
   ~Connection() {
@@ -156,7 +156,8 @@ public:
       return;
     }
   }
-  explicit Connection(const char *path) {
+  explicit Connection(const char *path, bool formula)
+      : deadline_(std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms(formula))) {
     sockaddr_un address{};
     address.sun_family = AF_UNIX;
     if (std::strlen(path) >= sizeof(address.sun_path))
@@ -199,10 +200,10 @@ uint32_t get32(const unsigned char *p) {
     result |= uint32_t(p[i]) << (i * 8);
   return result;
 }
-std::vector<std::string> request(State &state, const char *path) {
-  Connection connection(path);
+std::vector<std::string> request(State &state, const char *path, bool formula) {
+  Connection connection(path, formula);
   std::array<unsigned char, 20> header{};
-  std::memcpy(header.data(), magic, 8);
+  std::memcpy(header.data(), formula ? "SOCRF001" : magic, 8);
   put32(header.data() + 8, state.width);
   put32(header.data() + 12, state.height);
   put32(header.data() + 16, state.rgb.size());
@@ -210,13 +211,15 @@ std::vector<std::string> request(State &state, const char *path) {
   connection.transfer(state.rgb.data(), state.rgb.size(), true);
   std::array<unsigned char, 16> reply{};
   connection.transfer(reply.data(), reply.size(), false);
-  if (std::memcmp(reply.data(), magic, 8) || get32(reply.data() + 8) != 0 ||
+  if (std::memcmp(reply.data(), magic, 8) ||
       get32(reply.data() + 12) > max_text)
     throw std::runtime_error("invalid or failed service response");
   std::string text(get32(reply.data() + 12), '\0');
   connection.transfer(text.data(), text.size(), false);
   if (text.find('\0') != std::string::npos)
     throw std::runtime_error("NUL in service text");
+  if (get32(reply.data() + 8) != 0)
+    throw std::runtime_error(text.empty() ? "OCR service failed" : text);
   std::vector<std::string> lines;
   size_t start = 0;
   while (start < text.size()) {
@@ -268,8 +271,13 @@ void TessBaseAPI::SetImage(Pix *pix) {
 }
 
 int TessBaseAPI::Recognize(ETEXT_DESC *monitor) {
+  const bool formula = socr::formulaMode();
   auto state = lookup(this);
   const char *path = std::getenv("SPECTACLE_OCR_SOCKET");
+  if (formula && (!state || !path || !*path || monitor || !socr::enabled())) {
+    socr::formulaError(QStringLiteral("公式识别不可用，请确认 SpectacleOCR 已启用。"));
+    return -1;
+  }
   if (!state)
     return real_recognize()(this, monitor);
   bool replaced = state->recognized;
@@ -282,7 +290,7 @@ int TessBaseAPI::Recognize(ETEXT_DESC *monitor) {
     return real_recognize()(this, monitor);
   }
   try {
-    auto lines = request(*state, path);
+    auto lines = request(*state, path, formula);
     // Seed a valid iterator with a tiny blank page. This retains Tesseract's
     // own allocations and avoids running native OCR on the screenshot.
     std::array<unsigned char, 32 * 32 * 3> blank;
@@ -301,6 +309,12 @@ int TessBaseAPI::Recognize(ETEXT_DESC *monitor) {
                  state->lines.size());
     return 0;
   } catch (const std::exception &error) {
+    if (formula) {
+      state->recognized = false;
+      remember(this, state);
+      socr::formulaError(QString::fromUtf8(error.what()));
+      return -1;
+    }
     std::fprintf(stderr, "SpectacleOCR: %s; using Tesseract\n", error.what());
     if (replaced)
       real_set_image()(this, state->rgb.data(), state->width, state->height, 3,

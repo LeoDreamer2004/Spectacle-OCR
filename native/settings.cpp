@@ -1,10 +1,15 @@
 #include "settings.h"
+#include "formula_ui.h"
 #include <KConfigDialog>
 #include <KCoreConfigSkeleton>
 #include <QCheckBox>
+#include <QComboBox>
+#include <QFileInfo>
+#include <QPushButton>
 #include <QFormLayout>
 #include <QLabel>
 #include <QSpinBox>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <cstdio>
 #include <cstdlib>
@@ -14,7 +19,7 @@ namespace {
 class Configuration final : public KCoreConfigSkeleton {
 public:
   bool enabled = true;
-  int threads = 4, maxSide = 1536, timeoutMs = 20000;
+  int threads = 4, maxSide = 1536, timeoutMs = 20000, defaultMode = 0;
   explicit Configuration(QObject *parent)
       : KCoreConfigSkeleton(socr::configPath(), parent) {
     setCurrentGroup("OCR");
@@ -28,6 +33,7 @@ public:
     add("Threads", threads, 4, 1, 32);
     add("MaxSide", maxSide, 1536, 320, 2048);
     add("TimeoutMs", timeoutMs, 20000, 100, 25000);
+    add("DefaultMode", defaultMode, 0, 0, 1);
     load();
   }
 };
@@ -84,6 +90,10 @@ KPageWidgetItem *KConfigDialog::addPage(QWidget *page,
   layout->addWidget(enabled);
   auto *options = new QWidget(settingsPage);
   auto *form = new QFormLayout(options);
+  auto *mode = new QComboBox(options);
+  mode->setObjectName("kcfg_DefaultMode");
+  mode->addItems({QStringLiteral("文本识别"), QStringLiteral("公式识别 → LaTeX")});
+  form->addRow(QStringLiteral("启动时默认模式："), mode);
   form->addRow(QStringLiteral("识别模型："),
                new QLabel("PP-OCRv6 small · CPU", options));
   form->addRow(QStringLiteral("CPU 线程数："),
@@ -92,12 +102,29 @@ KPageWidgetItem *KConfigDialog::addPage(QWidget *page,
       QStringLiteral("检测长边上限："),
       spin(options, "MaxSide", 320, 2048, 32, QStringLiteral(" 像素")));
   form->addRow(
-      QStringLiteral("请求超时："),
+      QStringLiteral("文本请求超时："),
       spin(options, "TimeoutMs", 100, 25000, 1000, QStringLiteral(" 毫秒")));
   layout->addWidget(options);
+  auto *models = new QPushButton(QStringLiteral("下载 / 校验公式模型（约 120 MB）"), settingsPage);
+  models->setEnabled(!socr::FormulaUi::root().isEmpty());
+  connect(models, &QPushButton::clicked, this, [] { socr::manageFormulaModels(); });
+  layout->addWidget(models);
+  auto *modelStatus = new QLabel(settingsPage);
+  const auto refreshStatus = [modelStatus] {
+    bool installed = true;
+    for (const auto &file : {"encoder_model.onnx", "decoder_model.onnx", "tokenizer.json"})
+      installed &= QFileInfo(socr::FormulaUi::root() + "/assets/formula/" + file).size() > 0;
+    modelStatus->setText(installed ? QStringLiteral("公式模型：已下载 · 首次使用时加载") : QStringLiteral("公式模型：未安装 · 不影响文本识别"));
+  };
+  refreshStatus();
+  auto *statusTimer = new QTimer(modelStatus);
+  connect(statusTimer, &QTimer::timeout, modelStatus, refreshStatus);
+  statusTimer->start(1000);
+  layout->addWidget(modelStatus);
   auto *hint =
       new QLabel(QStringLiteral("提高检测分辨率有助于保留小字，但会增加耗时。服"
-                                "务出错或请求超时后，自动使用原生 Tesseract。"),
+                                "务出错或请求超时后，文本识别自动使用原生 Tesseract。"
+                                "公式请求上限 25 秒，失败时直接报错。"),
                  settingsPage);
   hint->setWordWrap(true);
   layout->addWidget(hint);

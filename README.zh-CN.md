@@ -18,6 +18,20 @@
 启动器等待模型加载、预热完成才打开窗口；同一窗口连续截图复用模型会话。
 关闭窗口后停止服务并清理临时 socket。使用 `--new-instance` 避免转交给未注入的旧实例。
 
+## 公式识别
+
+截图后，点击 OCR 按钮旁的箭头，选择 **公式识别 → LaTeX**，再点击“公式识别”。
+请框选单个公式；结果沿用 Spectacle 的复制与提示流程，输出 LaTeX 源码，不渲染公式。
+识别期间按钮暂时禁用，结束后可切回文本模式。
+
+首次使用会提示下载约 120 MB 的 Pix2Text MFR 1.5 模型，支持进度显示、取消和失败重试。
+也可以提前运行 `python3 scripts/setup_assets.py --formula`；下载地址与 SHA256 固定在
+[formula.lock.json](formula.lock.json)。公式模型按需加载，普通截图启动不加载它。
+设置页可调整启动时默认模式，并下载或校验公式模型。
+
+公式识别使用 CPU，单次请求上限 25 秒；失败时提示错误，不回退为普通文字识别。
+目前不支持自动分离整页中的正文与公式。
+
 ## 应用菜单与截图快捷键
 
 若希望从应用菜单使用 SpectacleOCR，建议新增用户级入口：
@@ -54,7 +68,7 @@ Categories=Utility;
 ## 从头构建
 
 当前针对 Linux x86_64、Spectacle **6.7.5**、Tesseract **5.5.3**。
-需要 Rust/Cargo、C++17 编译器、CMake、pkg-config、Tesseract、Qt6 Widgets 和 KF6 ConfigWidgets 开发文件，以及
+需要 Rust/Cargo、C++17 编译器、CMake、pkg-config、Tesseract、Qt6 Widgets/Quick/Qml 和 KF6 ConfigWidgets 开发文件，以及
 Python 3.12+ 和 curl（仅用于资源下载）。仍需保留 Spectacle 原有 Tesseract
 语言数据，测试默认使用 `chi_sim`。推理本身不需要 Python、PaddleOCR Python 包或系统安装 ONNX Runtime。
 
@@ -69,3 +83,6 @@ python3 scripts/setup_assets.py
 下载脚本自动下载约 43 MB 的资源、校验 SHA256 并解压运行库，放入被 Git 忽略的
 `assets/`（总占用约 70 MiB）；已通过校验的文件会复用。
 运行 `python3 scripts/setup_assets.py --help` 查看选项。
+
+公式测试：`python3 tests/formula.py`；真实 Spectacle 离屏界面测试：`python3 tests/ui.py`。
+两者需要公式模型、Pillow、Matplotlib，界面测试还需要 `chi_sim` 语言数据。

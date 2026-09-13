@@ -1,5 +1,6 @@
 //! Spectacle OCR service and standalone image recognition CLI.
 mod config;
+mod formula;
 mod ocr;
 use std::env;
 use std::fs;
@@ -10,10 +11,12 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 const MAGIC: &[u8; 8] = b"SOCR0001";
+const FORMULA_MAGIC: &[u8; 8] = b"SOCRF001";
 const MAX_IMAGE: usize = 64 * 1024 * 1024;
 const MAX_TEXT: usize = 1024 * 1024;
 
 struct Image {
+    formula: bool,
     width: u32,
     height: u32,
     rgb: Vec<u8>,
@@ -26,7 +29,7 @@ fn invalid(message: &str) -> io::Error {
 fn read_image(reader: &mut impl Read) -> io::Result<Image> {
     let mut header = [0u8; 20];
     reader.read_exact(&mut header)?;
-    if &header[..8] != MAGIC {
+    if &header[..8] != MAGIC && &header[..8] != FORMULA_MAGIC {
         return Err(invalid("unsupported protocol"));
     }
     let number = |offset| u32::from_le_bytes(header[offset..offset + 4].try_into().unwrap());
@@ -40,7 +43,12 @@ fn read_image(reader: &mut impl Read) -> io::Result<Image> {
     }
     let mut rgb = vec![0; length];
     reader.read_exact(&mut rgb)?;
-    Ok(Image { width, height, rgb })
+    Ok(Image {
+        formula: &header[..8] == FORMULA_MAGIC,
+        width,
+        height,
+        rgb,
+    })
 }
 
 trait Backend {
@@ -68,6 +76,7 @@ fn handle(mut stream: UnixStream, backend: &mut impl Backend) -> io::Result<()> 
 }
 
 struct ReloadingBackend {
+    formula: Option<(usize, formula::Formula)>,
     backend: ocr::OcrBackend,
     assets: PathBuf,
     config_path: PathBuf,
@@ -83,6 +92,20 @@ impl Backend for ReloadingBackend {
         }
         if let Some(value) = self.side_override {
             settings.max_side = value;
+        }
+        if image.formula {
+            let deadline = formula::deadline();
+            if self
+                .formula
+                .as_ref()
+                .is_none_or(|(threads, _)| *threads != settings.threads)
+            {
+                self.formula = Some((
+                    settings.threads,
+                    formula::Formula::new(&self.assets, settings.threads)?,
+                ));
+            }
+            return self.formula.as_mut().unwrap().1.recognize(image, deadline);
         }
         if settings != self.applied {
             let updated = ocr::OcrBackend::new(ocr::Options {
@@ -110,8 +133,10 @@ fn run() -> io::Result<()> {
     let mut max_side = None;
     let mut config_path = config::path();
     let mut repeat = 1;
+    let mut formula_mode = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
+            "--formula" => formula_mode = true,
             "--socket" => {
                 socket = Some(PathBuf::from(
                     args.next().ok_or_else(|| invalid("missing socket path"))?,
@@ -154,7 +179,7 @@ fn run() -> io::Result<()> {
             }
             "--help" | "-h" => {
                 println!(
-                    "spectacle-ocr-service (--socket PATH | --image FILE) [OPTIONS]\n\nPP-OCRv6 small CPU backend.\n  --assets DIR        Downloaded assets (default: assets)\n  --config FILE       Settings file (default: XDG config/spectacle-ocrrc)\n  --threads N         Override saved CPU threads (default: 4, range: 1..32)\n  --det-max-side N    Override saved detection resolution (default: 1536, range: 320..2048)\n  --repeat N          Repeat image inference with resident models (1..20)"
+                    "spectacle-ocr-service (--socket PATH | --image FILE) [OPTIONS]\n\nPP-OCRv6 small / Pix2Text MFR CPU backend.\n  --formula          Recognize a single formula as LaTeX (--image only)\n  --assets DIR        Downloaded assets (default: assets)\n  --config FILE       Settings file (default: XDG config/spectacle-ocrrc)\n  --threads N         Override saved CPU threads (default: 4, range: 1..32)\n  --det-max-side N    Override saved detection resolution (default: 1536, range: 320..2048)\n  --repeat N          Repeat image inference with resident models (1..20)"
                 );
                 return Ok(());
             }
@@ -163,6 +188,11 @@ fn run() -> io::Result<()> {
     }
     if socket.is_some() == image_path.is_some() {
         return Err(invalid("provide exactly one of --socket or --image"));
+    }
+    if formula_mode && socket.is_some() {
+        return Err(invalid(
+            "--formula is for image mode; socket requests select their own mode",
+        ));
     }
     if !(1..=20).contains(&repeat) || (socket.is_some() && repeat != 1) {
         return Err(invalid("--repeat requires image mode and must be 1..20"));
@@ -180,6 +210,7 @@ fn run() -> io::Result<()> {
         max_side: settings.max_side,
     })?;
     let mut backend = ReloadingBackend {
+        formula: None,
         backend,
         assets,
         config_path,
@@ -197,6 +228,7 @@ fn run() -> io::Result<()> {
             return Err(invalid("image exceeds 64 MiB RGB limit"));
         }
         let image = Image {
+            formula: formula_mode,
             width: rgb.width(),
             height: rgb.height(),
             rgb: rgb.into_raw(),

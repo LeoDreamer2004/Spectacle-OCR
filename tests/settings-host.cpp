@@ -4,6 +4,7 @@
 #include <KPageWidgetModel>
 #include <QApplication>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QEventLoop>
 #include <QLabel>
@@ -45,6 +46,8 @@ int main(int argc, char **argv) {
     auto *side = dialog.findChild<QSpinBox *>("kcfg_MaxSide");
     auto *timeout = dialog.findChild<QSpinBox *>("kcfg_TimeoutMs");
     auto *enabled = dialog.findChild<QCheckBox *>("kcfg_Enabled");
+    auto *mode = dialog.findChild<QComboBox *>("kcfg_DefaultMode");
+    check(mode && mode->currentIndex() == 0, "wrong default OCR mode");
     check(threads && side && timeout && enabled, "missing controls");
     auto *model =
         qobject_cast<KPageWidgetModel *>(dialog.pageWidget()->model());
@@ -75,7 +78,12 @@ int main(int argc, char **argv) {
       pump();
     };
     threads->setValue(6);
+    mode->setCurrentIndex(1);
     click(QDialogButtonBox::Apply);
+    {
+      QSettings settings(path, QSettings::IniFormat);
+      check(settings.value("OCR/DefaultMode").toInt() == 1, "formula default mode not saved");
+    }
     check(savedThreads() == 6, "apply did not save");
     threads->setValue(8);
     click(QDialogButtonBox::Cancel);
@@ -84,6 +92,7 @@ int main(int argc, char **argv) {
     pump();
     check(threads->value() == 6, "reopen did not reset canceled edits");
     click(QDialogButtonBox::RestoreDefaults);
+    check(mode->currentIndex() == 0, "default OCR mode not restored");
     check(threads->value() == 4 && savedThreads() == 6,
           "defaults saved before apply");
     click(QDialogButtonBox::Cancel);

@@ -20,6 +20,21 @@ reused for subsequent screenshots in that instance. Closing the window stops the
 and removes its temporary socket. `--new-instance` prevents forwarding to an existing,
 unmodified Spectacle process.
 
+## Formula recognition
+
+After taking a screenshot, open the arrow beside the OCR button, select
+**公式识别 → LaTeX** (formula recognition), then click the recognition button.
+Select a single formula. Results use Spectacle's existing clipboard and notification flow;
+the output is LaTeX source, without a rendered preview. Controls are disabled while processing.
+
+First use offers a download of about 120 MB of Pix2Text MFR 1.5 models, with progress,
+cancellation, and retry. Alternatively, run `python3 scripts/setup_assets.py --formula`.
+[formula.lock.json](formula.lock.json) pins URLs and SHA256 checksums. Formula models load
+only when needed. The SpectacleOCR settings page provides the startup mode and model installer.
+
+Formula inference uses the CPU with a 25-second request limit. Failures are reported without
+falling back to text OCR. Automatic separation of body text and formulas is not implemented.
+
 ## Application menu and screenshot shortcuts
 
 To launch SpectacleOCR from your application menu, create a
@@ -59,7 +74,7 @@ new Spectacle instance, so region selection starts after warmup.
 
 The current target is Linux x86_64 with **Spectacle 6.7.5** and **Tesseract 5.5.3**.
 Install Rust/Cargo, a C++17 compiler, CMake, pkg-config, and development files for
-Tesseract, Qt6 Widgets, and KF6 ConfigWidgets. Asset setup also needs Python 3.12+ and curl.
+Tesseract, Qt6 Widgets/Quick/Qml, and KF6 ConfigWidgets. Asset setup also needs Python 3.12+ and curl.
 Keep at least one Tesseract recognition language installed; tests default to `chi_sim`.
 Inference does not require Python, the PaddleOCR Python package, or a system installation
 of ONNX Runtime.
@@ -75,3 +90,6 @@ python3 scripts/setup_assets.py
 The setup script downloads about 43 MB, verifies SHA256 checksums, and extracts the runtime
 into `assets/` (about 70 MiB total, excluded from Git). Verified cached files are reused.
 Run `python3 scripts/setup_assets.py --help` for options.
+
+Formula tests: `python3 tests/formula.py`; real Spectacle offscreen UI tests: `python3 tests/ui.py`.
+Both require formula assets, Pillow, and Matplotlib; the UI test also requires `chi_sim` language data.

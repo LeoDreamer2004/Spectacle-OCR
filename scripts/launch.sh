@@ -39,5 +39,5 @@ done
 [[ -S "$runtime/ocr.sock" ]] || { echo 'Service startup timed out.' >&2; exit 1; }
 echo 'PP-OCRv6 small CPU ready. The OCR button now uses the real model.' >&2
 # A new instance avoids forwarding this invocation to an un-injected DBus owner.
-SPECTACLE_OCR_SOCKET="$runtime/ocr.sock" LD_PRELOAD="$hook${LD_PRELOAD:+:$LD_PRELOAD}" \
+SPECTACLE_OCR_ROOT="$root" SPECTACLE_OCR_SOCKET="$runtime/ocr.sock" LD_PRELOAD="$hook${LD_PRELOAD:+:$LD_PRELOAD}" \
     spectacle --new-instance "$@"
