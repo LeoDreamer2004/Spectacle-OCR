@@ -5,7 +5,7 @@
 为 KDE Spectacle 接入本地 PP-OCR 后端。
 
 支持本地中英文识别、原生设置页、参数热更新及 Tesseract 故障回退。
-当前适配 Spectacle 6.7.5 / Tesseract 5.5.3，推理使用 CPU。
+当前已验证 Spectacle 6.7.5、6.8.0 / Tesseract 5.5.3，推理使用 CPU。
 
 ## 直接使用
 
@@ -15,7 +15,8 @@
 ./scripts/launch.sh --launchonly
 ```
 
-启动器等待模型加载、预热完成才打开窗口；同一窗口连续截图复用模型会话。
+启动截图时仅启动轻量服务，不加载识别模型。首次点击文本或公式识别时，才加载对应模型；
+同一窗口后续识别复用已加载的模型，修改相关性能参数后会在下一次识别时重建。
 关闭窗口后停止服务并清理临时 socket。使用 `--new-instance` 避免转交给未注入的旧实例。
 
 ## 公式识别
@@ -63,11 +64,12 @@ Categories=Utility;
 /absolute/path/to/SpectacleOCR/scripts/launch.sh --region
 ```
 
-当前启动器每次都会先加载模型，并打开独立 Spectacle 实例；模型预热前不会出现框选界面。
+当前启动器打开独立 Spectacle 实例，框选截图不等待识别模型加载。
 
 ## 从头构建
 
-当前针对 Linux x86_64、Spectacle **6.7.5**、Tesseract **5.5.3**。
+当前针对 Linux x86_64、Tesseract **5.5.3**。已验证 Spectacle **6.7.5 / 6.8.0**，
+启动器不限制 Spectacle 版本。
 需要 Rust/Cargo、C++17 编译器、CMake、pkg-config、Tesseract、Qt6 Widgets/Quick/Qml 和 KF6 ConfigWidgets 开发文件，以及
 Python 3.12+ 和 curl（仅用于资源下载）。仍需保留 Spectacle 原有 Tesseract
 语言数据，测试默认使用 `chi_sim`。推理本身不需要 Python、PaddleOCR Python 包或系统安装 ONNX Runtime。

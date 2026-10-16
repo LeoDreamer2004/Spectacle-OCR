@@ -77,7 +77,7 @@ fn handle(mut stream: UnixStream, backend: &mut impl Backend) -> io::Result<()> 
 
 struct ReloadingBackend {
     formula: Option<(usize, formula::Formula)>,
-    backend: ocr::OcrBackend,
+    backend: Option<ocr::OcrBackend>,
     assets: PathBuf,
     config_path: PathBuf,
     applied: config::Settings,
@@ -107,20 +107,20 @@ impl Backend for ReloadingBackend {
             }
             return self.formula.as_mut().unwrap().1.recognize(image, deadline);
         }
-        if settings != self.applied {
+        if self.backend.is_none() || settings != self.applied {
             let updated = ocr::OcrBackend::new(ocr::Options {
                 assets: self.assets.clone(),
                 threads: settings.threads,
                 max_side: settings.max_side,
             })?;
-            self.backend = updated;
+            self.backend = Some(updated);
             self.applied = settings;
             eprintln!(
                 "Applied OCR configuration: threads={}, max_side={}",
                 settings.threads, settings.max_side
             );
         }
-        self.backend.recognize(image)
+        self.backend.as_mut().unwrap().recognize(image)
     }
 }
 
@@ -204,14 +204,14 @@ fn run() -> io::Result<()> {
     if let Some(value) = max_side {
         settings.max_side = value;
     }
-    let backend = ocr::OcrBackend::new(ocr::Options {
-        assets: assets.clone(),
-        threads: settings.threads,
-        max_side: settings.max_side,
-    })?;
+    if !(1..=32).contains(&settings.threads) || !(320..=2048).contains(&settings.max_side) {
+        return Err(invalid(
+            "threads must be 1..32; det-max-side must be 320..2048",
+        ));
+    }
     let mut backend = ReloadingBackend {
         formula: None,
-        backend,
+        backend: None,
         assets,
         config_path,
         applied: settings,
@@ -244,7 +244,10 @@ fn run() -> io::Result<()> {
     // Never unlink an existing endpoint: it may belong to a live service.
     let listener = UnixListener::bind(&socket)?;
     fs::set_permissions(&socket, fs::Permissions::from_mode(0o600))?;
-    eprintln!("PP-OCRv6 CPU backend listening on {}", socket.display());
+    eprintln!(
+        "OCR service listening on {}; models load on first recognition",
+        socket.display()
+    );
     for stream in listener.incoming() {
         match stream.and_then(|stream| handle(stream, &mut backend)) {
             Ok(()) => (),

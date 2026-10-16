@@ -48,7 +48,12 @@ def main():
                         log.seek(0)
                         raise AssertionError(log.read())
                     time.sleep(0.01)
-                assert path.exists(), "model startup timed out"
+                assert path.exists(), "service startup timed out"
+                log.flush()
+                log.seek(0)
+                assert 'loaded/warmed' not in log.read(), 'text model loaded before recognition'
+                assert 'libonnxruntime' not in Path(f'/proc/{service.pid}/maps').read_text(), 'inference runtime loaded before recognition'
+                print('PASS: idle service starts without loading models or ONNX Runtime', flush=True)
                 # A malformed client must not kill the real OCR service.
                 with socket.socket(socket.AF_UNIX) as stream:
                     stream.connect(str(path))
@@ -64,6 +69,8 @@ def main():
                 # Alternate real text and blank input with the same model sessions.
                 assert request(path, images["text"]) == expected
                 assert request(path, images["blank"]) == ""
+                log.seek(0)
+                assert log.read().count('loaded/warmed') == 1, 'text model was reloaded between requests'
                 config.write_text("[OCR]\nThreads=2\nMaxSide=1024\n")
                 assert request(path, images["text"]) == expected
                 print("PASS: settings reload without restarting service", flush=True)
@@ -106,9 +113,10 @@ def main():
         result = subprocess.run([ROOT / "scripts/launch.sh", "--help"],
                                 env=env, capture_output=True, text=True, timeout=30)
         assert result.returncode == 0, result.stdout + result.stderr
-        assert "PP-OCRv6 small CPU ready" in result.stderr, result.stderr
+        assert "OCR service ready" in result.stderr, result.stderr
+        assert 'loaded/warmed' not in result.stderr, result.stderr
         assert not list(Path(temporary).iterdir()), "launcher leaked its runtime directory"
-    print("PASS: launcher model readiness and exit cleanup (offscreen --help)", flush=True)
+    print("PASS: launcher lazy startup and exit cleanup (offscreen --help)", flush=True)
 
 
 if __name__ == "__main__":

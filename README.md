@@ -3,7 +3,7 @@
 **English** | [简体中文](README.zh-CN.md)
 
 SpectacleOCR provides Chinese and English text recognition, an integrated settings page,
-configuration reloads, and fallback to Tesseract. It currently targets **Spectacle 6.7.5**
+configuration reloads, and fallback to Tesseract. It has been validated with **Spectacle 6.7.5 and 6.8.0**
 and **Tesseract 5.5.3**, using CPU inference.
 
 ## Quick start
@@ -15,8 +15,9 @@ Complete [Building from source](#building-from-source) first. Then run from the 
 ```
 
 Take a screenshot in the new Spectacle window and click its OCR button.
-The launcher loads and warms up the models before opening the window. Model sessions are
-reused for subsequent screenshots in that instance. Closing the window stops the service
+The launcher starts a lightweight service without loading recognition models. Each model loads
+on its first text or formula recognition request and is reused in that instance. Changes to
+related performance settings rebuild the model on the next recognition request. Closing the window stops the service
 and removes its temporary socket. `--new-instance` prevents forwarding to an existing,
 unmodified Spectacle process.
 
@@ -67,12 +68,13 @@ the desired shortcut to the SpectacleOCR entry or a command such as:
 /absolute/path/to/SpectacleOCR/scripts/launch.sh --region
 ```
 
-Remove any conflicting old binding. The current launcher loads models before opening a
-new Spectacle instance, so region selection starts after warmup.
+Remove any conflicting old binding. The launcher opens a new Spectacle instance;
+region selection does not wait for recognition models to load.
 
 ## Building from source
 
-The current target is Linux x86_64 with **Spectacle 6.7.5** and **Tesseract 5.5.3**.
+The current target is Linux x86_64 with **Tesseract 5.5.3**. Spectacle **6.7.5 / 6.8.0**
+have been validated; the launcher does not restrict the Spectacle version.
 Install Rust/Cargo, a C++17 compiler, CMake, pkg-config, and development files for
 Tesseract, Qt6 Widgets/Quick/Qml, and KF6 ConfigWidgets. Asset setup also needs Python 3.12+ and curl.
 Keep at least one Tesseract recognition language installed; tests default to `chi_sim`.

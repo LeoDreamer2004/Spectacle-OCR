@@ -7,11 +7,6 @@ if [[ ! -x "$service" || ! -f "$hook" ]]; then
     echo 'Run bash scripts/build.sh first.' >&2
     exit 1
 fi
-version=$(QT_QPA_PLATFORM=offscreen spectacle --version 2>/dev/null)
-if [[ "$version" != 'spectacle 6.7.5' ]]; then
-    echo "Unsupported Spectacle version: $version (prototype requires 6.7.5)" >&2
-    exit 1
-fi
 if [[ $(pkg-config --modversion tesseract) != '5.5.3' ]]; then
     echo 'Prototype requires Tesseract 5.5.3; rebuild and revalidate after upgrading.' >&2
     exit 1
@@ -37,7 +32,7 @@ for ((attempt=0; attempt<3000; attempt++)); do
     sleep 0.02
 done
 [[ -S "$runtime/ocr.sock" ]] || { echo 'Service startup timed out.' >&2; exit 1; }
-echo 'PP-OCRv6 small CPU ready. The OCR button now uses the real model.' >&2
+echo 'OCR service ready. Models load only when recognition is requested.' >&2
 # A new instance avoids forwarding this invocation to an un-injected DBus owner.
 SPECTACLE_OCR_ROOT="$root" SPECTACLE_OCR_SOCKET="$runtime/ocr.sock" LD_PRELOAD="$hook${LD_PRELOAD:+:$LD_PRELOAD}" \
     spectacle --new-instance "$@"
