@@ -7,10 +7,6 @@ if [[ ! -x "$service" || ! -f "$hook" ]]; then
     echo 'Run bash scripts/build.sh first.' >&2
     exit 1
 fi
-if [[ $(pkg-config --modversion tesseract) != '5.5.3' ]]; then
-    echo 'Prototype requires Tesseract 5.5.3; rebuild and revalidate after upgrading.' >&2
-    exit 1
-fi
 runtime=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/spectacle-ocr.XXXXXXXX")
 service_pid=''
 cleanup() {

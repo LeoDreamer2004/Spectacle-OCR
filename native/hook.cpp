@@ -243,7 +243,7 @@ void TessBaseAPI::SetImage(const unsigned char *data, int width, int height,
   forget(this);
   real_set_image()(this, data, width, height, bpp, stride);
   const char *path = std::getenv("SPECTACLE_OCR_SOCKET");
-  if (!path || !*path || std::strcmp(Api::Version(), "5.5.3") != 0 || !data ||
+  if (!path || !*path || !data ||
       bpp != 3 || width <= 0 || height <= 0 ||
       uint64_t(width) * height * 3 > max_image ||
       int64_t(stride) < int64_t(width) * 3)

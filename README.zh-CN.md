@@ -5,7 +5,7 @@
 为 KDE Spectacle 接入本地 PP-OCR 后端。
 
 支持本地中英文识别、原生设置页、参数热更新及 Tesseract 故障回退。
-当前已验证 Spectacle 6.7.5、6.8.0 / Tesseract 5.5.3，推理使用 CPU。
+当前已验证 Spectacle 6.7.5、6.8.0、6.8.2 / Tesseract 5.5.3、5.5.4，推理使用 CPU。
 
 ## 直接使用
 
@@ -68,8 +68,8 @@ Categories=Utility;
 
 ## 从头构建
 
-当前针对 Linux x86_64、Tesseract **5.5.3**。已验证 Spectacle **6.7.5 / 6.8.0**，
-启动器不限制 Spectacle 版本。
+当前针对 Linux x86_64、Tesseract **5.5.3 及以上的 5.x 版本**。已验证 Spectacle **6.7.5 / 6.8.0 / 6.8.2**，
+启动器不限制 Spectacle 或 Tesseract 的具体版本；构建时要求 Tesseract 5.x。
 需要 Rust/Cargo、C++17 编译器、CMake、pkg-config、Tesseract、Qt6 Widgets/Quick/Qml 和 KF6 ConfigWidgets 开发文件，以及
 Python 3.12+ 和 curl（仅用于资源下载）。仍需保留 Spectacle 原有 Tesseract
 语言数据，测试默认使用 `chi_sim`。推理本身不需要 Python、PaddleOCR Python 包或系统安装 ONNX Runtime。

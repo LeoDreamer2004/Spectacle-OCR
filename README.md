@@ -3,8 +3,8 @@
 **English** | [简体中文](README.zh-CN.md)
 
 SpectacleOCR provides Chinese and English text recognition, an integrated settings page,
-configuration reloads, and fallback to Tesseract. It has been validated with **Spectacle 6.7.5 and 6.8.0**
-and **Tesseract 5.5.3**, using CPU inference.
+configuration reloads, and fallback to Tesseract. It has been validated with **Spectacle 6.7.5, 6.8.0, and 6.8.2**
+and **Tesseract 5.5.3 and 5.5.4**, using CPU inference.
 
 ## Quick start
 
@@ -73,8 +73,8 @@ region selection does not wait for recognition models to load.
 
 ## Building from source
 
-The current target is Linux x86_64 with **Tesseract 5.5.3**. Spectacle **6.7.5 / 6.8.0**
-have been validated; the launcher does not restrict the Spectacle version.
+The current target is Linux x86_64 with **Tesseract 5.x (5.5.3 or later)**. Spectacle **6.7.5 / 6.8.0 / 6.8.2**
+have been validated; the launcher does not restrict specific Spectacle or Tesseract versions. Building requires Tesseract 5.x.
 Install Rust/Cargo, a C++17 compiler, CMake, pkg-config, and development files for
 Tesseract, Qt6 Widgets/Quick/Qml, and KF6 ConfigWidgets. Asset setup also needs Python 3.12+ and curl.
 Keep at least one Tesseract recognition language installed; tests default to `chi_sim`.
